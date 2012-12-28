@@ -6,8 +6,35 @@ import pdb
 application = Flask(__name__)
 app = application
 
-@app.route('/auth/access_token', methods=['GET', 'POST'])
+@app.errorhandler(405)
+def not_allowed(error):
+    return jsonify({
+            'error'   : 'invalid_request',
+            'message' : 'Method not allowed'
+            }), error.code
+
+def response_with(data, status):
+    resp = jsonify(data)
+    resp.status_code = status
+    resp.headers['Content-type']  = 'application/json;charset=UTF-8'
+    resp.headers['Cache-Control'] = 'no-store'
+    resp.headers['Pragma']        = 'no-cache'
+    return resp
+
+# request method must be other than GET
+# see ietf oauth v2 bearer (draft 22): section 2.2 Form-Encoded Body Parameter
+# The HTTP request method is one for which the request body has defined semantics. In particular, this means that the GET method MUST NOT be used.
+@app.route('/auth/access_token', methods=['POST'])
 def authorize_endpoint():
+
+    required_header = 'application/x-www-form-urlencoded'
+    if (request.headers['content-type'] != required_header):
+        data = {'error': 'invalid_request'}
+        # in debug mode
+        data['missing_entity'] = 'header: ' + required_header
+        return response_with(data, 400)
+
+
     # check request body
     required_entities = [u'grant_type', u'username', u'password']
     optional_entities = [u'scope']
@@ -27,11 +54,7 @@ def authorize_endpoint():
         data = {'error': 'invalid_request'}
         # when debug, send the list of found params
         data['missing_entity'] = missing_keys
-        resp = jsonify(data)
-        resp.status_code = 400
-        resp.headers['Cache-Control'] = 'no-store'
-        resp.headers['Pragma']        = 'no-cache'
-        return resp
+        return response_with(data, 400)
 
     # validate credentials username and password
 
@@ -40,15 +63,9 @@ def authorize_endpoint():
 
     data = {
             'access_token'      : '42374690y41yd0BXC.df-7629013eo',
-            'token_type'        : 'example',
+            'token_type'        : 'Bearer',
             'expires_in'        : '3600', #recommended
             'refresh_token'     : 'thSDTFy237f208IkAw021', #optional
             }
-
-    resp= jsonify(data)
-    resp.status_code= 200
-    resp.headers['Content-type']  = 'application/json;charset=UTF-8'
-    resp.headers['Cache-Control'] = 'no-store'
-    resp.headers['Pragma']        = 'no-cache'
-    return resp
+    return response_with(data, 200)
 
