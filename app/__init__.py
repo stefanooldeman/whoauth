@@ -76,7 +76,8 @@ def response_with(data, status):
 
 @app.errorhandler(405)
 def not_allowed(error):
-    return jsonify({
-            'error'   : 'invalid_request',
+    data = {
+            'error'             : 'invalid_request',
             'error_description' : 'Method not allowed, use POST'
-            }), error.code
+            }
+    return response_with(data, error.code)
