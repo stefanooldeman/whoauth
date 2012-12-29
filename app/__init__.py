@@ -1,10 +1,36 @@
 from flask import json
 from flask import Flask, request, Response, jsonify
-import json
+import redis
+import simplejson as json
+import hashlib
 import pdb
+
 
 application = Flask(__name__)
 app = application
+redis = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+TOMY2_SALT = '(*f01h3jedlnA*90du1pj-1.BHS)dhu_)0@-0312h_'
+
+# FIXME validate input 
+# TODO protect against spam requests..
+@app.route('/users', methods=['POST'])
+def create_user():
+    input_data = json.loads(request.data)
+# TODO generate this.. and make the names cute / fun
+    generated_username = 'fdshjfsdu'
+    # remember id value is a String type
+    id = redis.incr('ids:user')
+    data = {
+            'id': id,
+            'alias': generated_username,
+            'password': hashlib.sha224(TOMY2_SALT + input_data['password']).hexdigest(),
+            'email': input_data['email']
+            }
+    redis.hmset('user:%s' % id, data)
+
+    del data['password']
+    return jsonify(data), 201
 
 # request method must be other than GET
 # see ietf oauth v2 bearer (draft 22): section 2.2 Form-Encoded Body Parameter
