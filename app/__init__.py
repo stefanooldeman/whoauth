@@ -1,11 +1,9 @@
 from flask import json
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response, jsonify, abort
 import redis
-import simplejson as json
-import hashlib
 import pdb
-
 from lib import utils
+from lib.oauth import OAuthFlow
 
 application = Flask(__name__)
 app = application
@@ -62,52 +60,13 @@ def access_token():
     response = utils.validate_body([u'grant_type'], request.form.keys())
     if (response):
         return response 
-    else:
-        grant_type = request.form['grant_type']
-
-    if (grant_type == 'password'):
-        # Grant Flow: "Resource Owner Password Credentials Grant"
-
-        response = validate_body([u'username', u'password'], request.form.keys())
-        if (response):
-            return response
-        else:
-#FIXME filter input
-            username = request.form['username']
-            password = request.form['password']
-
-        # validate credentials username and password
-        if (validate_credentials(username, password) is True):
-# TODO generate a token and store it with user
-            data = {
-                    'access_token'      : '42374690y41yd0BXC.df-7629013eo',
-                    'token_type'        : 'Bearer',
-                    'expires_in'        : '3600'
-                    }
-            #in debug
-            data['uid'] = get_uid_with(username) 
-            return response_with(data, 200)
-        else:
-            data = {'error': 'invalid_grant'}
-            # in debug
-            data['error_description'] = 'invalid password credentials'
-            return response_with(data, 400)
-    else:
-
-# TODO write some unit tests here
-def validate_credentials(username, password):
-    password_hash = hashlib.sha224(TOMY2_SALT + password).hexdigest()
-    found_uid      = get_uid_with(username)
-    if (found_uid != None):
-        found_hash = redis.get('cred:%s:hash' % found_uid)
-        if (found_hash != None and password_hash == found_hash):
-            return True
-
-    return False
+    
+    grant_type = request.form['grant_type']
+    if (grant_type not in ['password']):
         return utils.response_with({'error': 'unsupported_grant_type'}, 400)
 
-def get_uid_with(username):
-    return redis.get('cred:%s:uid' % username)
+    grant = OAuthFlow.factory(grant_type)
+    return grant.validate(request.form)
 
 
 @app.errorhandler(404)
