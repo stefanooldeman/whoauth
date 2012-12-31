@@ -1,47 +1,32 @@
 from flask import json
 from flask import Flask, request, Response, jsonify, abort
-import redis
-import pdb
+
 from lib import utils
 from lib.oauth import OAuthFlow
+from app.model.user import User
 
 application = Flask(__name__)
 app = application
-redis = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 TOMY2_SALT = '(*f01h3jedlnA*90du1pj-1.BHS)dhu_)0@-0312h_'
 
 @app.route('/users/<int:uid>', methods=['GET'])
 def get_user(uid):
-    data = redis.hgetall('user:%d' % uid)
-    if(data == {}):
+    user = User()
+    if(user.load(uid) == False):
         abort(404)
-
-    return jsonify(data), 200
+    return jsonify(user.data), 200
 
 # FIXME validate input 
 # TODO protect against spam requests..
 @app.route('/users', methods=['POST'])
 def create_user():
     input_data = json.loads(request.data)
-# TODO generate this.. and make the names cute / fun
-    # FIXME ensure the names are unique
-    generated_username = 'fdshjfsdu'
-    # remember id value is a String type
-    uid = redis.incr('ids:user')
-    password_hash = hashlib.sha224(TOMY2_SALT + input_data['password']).hexdigest()
-    data = {
-            'uid': uid,
-            'username': generated_username,
-            'email': input_data['email']
-            }
-    # user namespace = user details
-    redis.hmset('user:%s' % uid, data)
-    # cred namespace = credentials schema
-    redis.set('cred:%s:uid' % generated_username, uid)
-    redis.set('cred:%s:hash' % uid, password_hash)
+    user = User()
+    if (user.create(input_data) is False):
+        abort(401)
 
-    return jsonify(data), 201
+    return jsonify(user.data), 201
 
 # request method must be other than GET
 # see ietf oauth v2 bearer (draft 22): section 2.2 Form-Encoded Body Parameter

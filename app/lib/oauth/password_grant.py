@@ -1,9 +1,7 @@
-import redis
-import hashlib
 from base import OAuth
 from app.lib import utils
+from app.model.user import User
 
-redis = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 class Flow(OAuth):
 
@@ -18,8 +16,9 @@ class Flow(OAuth):
             username = data['username']
             password = data['password']
 
+        user = User()
         # validate credentials username and password
-        if (self.validate_credentials(username, password) is True):
+        if (user.validate_credentials(username, password) is True):
             # TODO generate a token and store it with user
             data = {
                     'access_token'      : '42374690y41yd0BXC.df-7629013eo',
@@ -27,26 +26,11 @@ class Flow(OAuth):
                     'expires_in'        : '3600'
                     }
             #in debug
-            data['uid'] = self.get_uid_with(username) 
+            data['uid'] = user.get_uid_with(username) 
             return utils.response_with(data, 200)
         else:
             data = {'error': 'invalid_grant'}
             # in debug
             data['error_description'] = 'invalid password credentials'
             return utils.response_with(data, 400)
-
-    # TODO write some unit tests here
-    def validate_credentials(self, username, password):
-        TOMY2_SALT = '(*f01h3jedlnA*90du1pj-1.BHS)dhu_)0@-0312h_'
-        password_hash = hashlib.sha224(TOMY2_SALT + password).hexdigest()
-        found_uid      = self.get_uid_with(username)
-        if (found_uid != None):
-            found_hash = redis.get('cred:%s:hash' % found_uid)
-            if (found_hash != None and password_hash == found_hash):
-                return True
-
-        return False
-
-    def get_uid_with(self, username):
-        return redis.get('cred:%s:uid' % username)
 
