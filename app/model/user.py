@@ -5,8 +5,11 @@ class User(BaseModel):
 
     data = {}
 
-    #def __init__(self):
-    #    super(User, self).__init__()
+    def __init__(self):
+        super(User, self).__init__()
+        # user namespace contains user details
+        self.namespace = 'user'
+        self.hash_keys = ['uid', 'username', 'email']
 
     # @id unique-user-id
     # @return Boolean
@@ -16,23 +19,20 @@ class User(BaseModel):
         return self.data is not {}
 
     def create(self, input_data):
-        redis = self.redis
-        uid = redis.incr(self.KEYS_USER_UID)
-        # TODO generate this.. and make the names cute / fun
-        # FIXME ensure the names are unique
-        generated_username = 'fdshjfsdu'
+        username = self.generate_username()
         # remember id value is a String type
         password_hash = self.generate_password(input_data['password'])
         data = {
-                'uid': uid,
-                'username': generated_username,
+                'username': username,
                 'email': input_data['email']
                 }
-        # user namespace = user details
-        redis.hmset('user:%s' % uid, data)
+        if (self.insert(data, True) is False):
+            #add logging
+            pass
+
         # cred namespace = credentials schema
-        redis.set('cred:%s:uid' % generated_username, uid)
-        redis.set('cred:%s:hash' % uid, password_hash)
+        self.redis.set('cred:%s:uid' % username, self.uid)
+        self.redis.set('cred:%s:hash' % self.uid, password_hash)
         self.data = data
 
         # TODO pipe all redis requests and return variable Bool on result
@@ -40,6 +40,11 @@ class User(BaseModel):
 
     def generate_password(self, data):
         return hashlib.sha224(self.TOMY2_SALT + data).hexdigest()
+
+    def generate_username(self):
+        # TODO generate this.. and make the names cute / fun
+        # FIXME ensure the names are unique
+        return "Fhuidf"
 
     # TODO write some unit tests here
     def validate_credentials(self, username, password):
@@ -53,5 +58,9 @@ class User(BaseModel):
         return False
 
     def get_uid_with(self, username):
-        return redis.get('cred:%s:uid' % username)
+        return self.redis.get('cred:%s:uid' % username)
+
+    # Base class implementations #
+    def get_next_uid(self):
+        return self.redis.incr('globals:nextUserId')
 
