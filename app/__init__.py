@@ -5,6 +5,7 @@ import simplejson as json
 import hashlib
 import pdb
 
+from lib import utils
 
 application = Flask(__name__)
 app = application
@@ -55,10 +56,10 @@ def access_token():
         data = {'error': 'invalid_request'}
         # in debug mode
         data['error_description'] = 'missing header: ' + required_header
-        return response_with(data, 400)
+        return utils.response_with(data, 400)
 
     # check request body
-    response = validate_body([u'grant_type'], request.form.keys())
+    response = utils.validate_body([u'grant_type'], request.form.keys())
     if (response):
         return response 
     else:
@@ -92,7 +93,6 @@ def access_token():
             data['error_description'] = 'invalid password credentials'
             return response_with(data, 400)
     else:
-        return response_with({'error': 'unsupported_grant_type'}, 400)
 
 # TODO write some unit tests here
 def validate_credentials(username, password):
@@ -104,39 +104,19 @@ def validate_credentials(username, password):
             return True
 
     return False
+        return utils.response_with({'error': 'unsupported_grant_type'}, 400)
 
 def get_uid_with(username):
     return redis.get('cred:%s:uid' % username)
 
-# return False if valid, otherwise an response object
-def validate_body(required_entities, keys):
-    found = 0
-    # in debug mode, duplicate the required_entities items and pop each when found
-    missing_keys = [] 
-    missing_keys.extend(required_entities)
-    for key in keys:
-        # we are whitelisting here, ignore all other params that were sent
-        if key in required_entities:
-            found += 1
-            #in debug mode
-            i = missing_keys.index(key)
-            missing_keys.pop(i)
 
-    if (len(required_entities) != found):
-        data = {'error': 'invalid_request'}
-        # when debug, send the list of found params
-        # TODO, ensure error_description MUST NOT include chars outside the set %x20-21 / %x23-5B / %x5D-7E.
-        data['error_description'] = 'missing_entity: %s' % str(missing_keys)
-        return response_with(data, 400)
-    return False
-
-def response_with(data, status):
-    resp = jsonify(data)
-    resp.status_code = status
-    resp.headers['Content-type']  = 'application/json;charset=UTF-8'
-    resp.headers['Cache-Control'] = 'no-store'
-    resp.headers['Pragma']        = 'no-cache'
-    return resp
+@app.errorhandler(404)
+def not_allowed(error):
+    data = {
+            'error'             : 'invalid_request',
+            'error_description' : 'Resource not found'
+            }
+    return utils.response_with(data, error.code)
 
 @app.errorhandler(405)
 def not_allowed(error):
@@ -144,4 +124,4 @@ def not_allowed(error):
             'error'             : 'invalid_request',
             'error_description' : 'Method not allowed, use POST'
             }
-    return response_with(data, error.code)
+    return utils.response_with(data, error.code)
