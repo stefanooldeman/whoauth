@@ -48,7 +48,7 @@ class User(BaseModel):
 
     # TODO write some unit tests here
     def validate_credentials(self, username, password):
-        password_hash = generate_password(password)
+        password_hash = self.generate_password(password)
         found_uid      = self.get_uid_with(username)
         if (found_uid != None):
             found_hash = self.redis.get('cred:%s:hash' % found_uid)

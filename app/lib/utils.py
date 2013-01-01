@@ -23,7 +23,7 @@ class Utils(object):
             # when debug, send the list of found params
             # TODO, ensure error_description MUST NOT include chars outside the set %x20-21 / %x23-5B / %x5D-7E.
             data['error_description'] = 'missing_entity: %s' % str(missing_keys)
-            return response_with(data, 400)
+            return Utils.response_with(data, 400)
         return False
 
 
