@@ -7,6 +7,10 @@ install:
 test:
 	nosetests tests
 
-run:
-	redis-server
+start:
+	redis-server etc/redis.conf
 	python run.py
+
+stop:
+	cat etc/redis.conf | grep redis.pid | cut -d' ' -f2 | xargs cat | xargs kill
+
