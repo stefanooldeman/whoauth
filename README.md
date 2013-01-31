@@ -1,4 +1,4 @@
-# Intro
+# whosThat API
 
 This is a POC for oAuth2.0. For now it covers the following grant flows:
 - password (ongoing)
